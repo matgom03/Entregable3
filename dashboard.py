@@ -3,11 +3,9 @@ from dash import dcc, html,dash_table,Input,Output,State,no_update
 import dash_bootstrap_components as dbc
 from utils import *
 import plotly.express as px
-import joblib
 from utils import plot_confusion_matrix, plot_roc_curve, plot_feature_importance
 from sklearn.base import BaseEstimator, TransformerMixin
 import os
-import gdown
 class MultiHotDeckImputer(BaseEstimator, TransformerMixin):
     def __init__(self, imputations, random_state=0):
         self.imputations = imputations
@@ -35,30 +33,6 @@ df["Income"] = df["Income"].astype("category")
 cat=df.select_dtypes(include=['object','category']).columns.drop(['Income','Education-num'])
 num = df.select_dtypes(include=[np.number]).columns
 duplicadas = df[df.duplicated()]
-# ID del archivo en Google Drive (reemplázalo con el tuyo)
-drive_file_id = "1Kzh2hZoLC7B9fCrpyzpChYkbLsngFWuw"  # <-- cambia esto
-
-# Ruta local donde se guardará
-modelo_path = "modelo/gridsearch_rf.joblib"
-
-# Si el modelo no existe localmente, se descarga
-if not os.path.exists(modelo_path):
-    print("Descargando modelo desde Google Drive...")
-    url = f"https://drive.google.com/uc?id={drive_file_id}"
-    os.makedirs(os.path.dirname(modelo_path), exist_ok=True)
-    gdown.download(url, modelo_path, quiet=False)
-else:
-    print("Modelo ya disponible localmente.")
-
-# Cargar el modelo
-grid_search = joblib.load(modelo_path)
-best_model = grid_search.best_estimator_
-
-resultados = np.load("modelo/results_rf.npz")
-cm = resultados["cm"]
-fpr, tpr, roc_auc = resultados["fpr"], resultados["tpr"], resultados["roc_auc"]
-cm_fig = plot_confusion_matrix(cm)
-roc_fig = plot_roc_curve(fpr, tpr, roc_auc)
 app = dash.Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP],suppress_callback_exceptions=True)
 app.title = "EDA Adult Dataset"
 server = app.server
@@ -79,6 +53,35 @@ subtabs_analisis = html.Div([
     ]),
     html.Div(id='contenido_subtab_eda')
 ])
+def load_model_lazy():
+    """Carga el modelo y los resultados solo si se necesitan."""
+    import gdown
+    import joblib
+    modelo_path = "modelo/gridsearch_rf.joblib"
+    drive_file_id = "1Kzh2hZoLC7B9fCrpyzpChYkbLsngFWuw"
+
+    if not os.path.exists(modelo_path):
+        print("Descargando modelo desde Google Drive (lazy)...")
+        url = f"https://drive.google.com/uc?id={drive_file_id}"
+        os.makedirs(os.path.dirname(modelo_path), exist_ok=True)
+        gdown.download(url, modelo_path, quiet=False)
+    else:
+        print("Modelo ya disponible localmente (lazy).")
+
+    grid_search = joblib.load(modelo_path)
+    best_model = grid_search.best_estimator_
+
+    resultados_path = "modelo/results_rf.npz"
+    if not os.path.exists(resultados_path):
+        raise FileNotFoundError("El archivo de resultados 'results_rf.npz' no se encontró.")
+    
+    resultados = np.load(resultados_path)
+    cm = resultados["cm"]
+    fpr, tpr, roc_auc = resultados["fpr"], resultados["tpr"], resultados["roc_auc"]
+
+    cm_fig = plot_confusion_matrix(cm)
+    roc_fig = plot_roc_curve(fpr, tpr, roc_auc)
+    return best_model, cm_fig, roc_fig
 # ==========================================================
 # CALLBACKS DE LAS SUBTABS DE ANÁLISIS (EDA)
 # ==========================================================
@@ -216,13 +219,13 @@ def render_subtab(subtab_value):
     # Subtab: Visualizaciones del Modelo
     # ================================
     elif subtab_value == 'modelo':
+        best_model, cm_fig, roc_fig = load_model_lazy()
         fi_fig = plot_feature_importance(best_model, cat, num)
 
         return html.Div([
             html.H3("Visualizaciones del Modelo - Random Forest"),
             html.Hr(),
 
-        # Fila superior
             html.Div([
                 html.Div([
                     html.H5("Matriz de Confusión"),
@@ -233,18 +236,14 @@ def render_subtab(subtab_value):
                     html.H5("Curva ROC"),
                     dcc.Graph(figure=roc_fig, style={"height": "400px"})
                 ], style={"width": "48%", "padding": "10px"})
-            ], style={
-                "display": "flex",
-                "justifyContent": "space-between",
-                "flexWrap": "wrap"
-            }),
+            ], style={"display": "flex", "justifyContent": "space-between", "flexWrap": "wrap"}),
 
-            # Fila inferior
             html.Div([
                 html.H5("Importancia de Variables"),
                 dcc.Graph(figure=fi_fig, style={"height": "500px"})
             ], style={"width": "100%", "padding": "10px"})
         ])
+
     
     # ================================
     # Subtab: Indicadores del Modelo
