@@ -453,13 +453,47 @@ def plot_roc_curve(fpr, tpr, roc_auc):
                       yaxis_title="Tasa Verdaderos Positivos")
     return fig
 
-def plot_feature_importance(modelo,cat,num):
-    importances = modelo.named_steps['modelo'].feature_importances_
-    encoder = modelo.named_steps['preprocesador'].named_transformers_['cat'].named_steps['onehot']
-    features_cat = encoder.get_feature_names_out(cat)
-    features_num = num
-    features = np.concatenate([features_num, features_cat])
-    df_imp = pd.DataFrame({'Feature': features, 'Importance': importances}).sort_values(by='Importance', ascending=False)
-    fig = px.bar(df_imp.head(15), x='Importance', y='Feature', orientation='h', title="Top 15 Importancias de Variables")
+def plot_feature_importance(modelo, cat=None, num=None):
+    # --- 1. Obtener importancias del modelo ---
+    if hasattr(modelo, 'named_steps'):  # Si es un pipeline
+        model_final = modelo.named_steps['modelo']
+        importances = model_final.feature_importances_
+
+        # --- 2. Obtener nombres de variables ---
+        try:
+            encoder = modelo.named_steps['preprocesador'].named_transformers_['cat'].named_steps['onehot']
+            features_cat = encoder.get_feature_names_out(cat)
+        except Exception:
+            features_cat = np.array([])
+
+        features_num = np.array(num) if num is not None else np.array([])
+        features = np.concatenate([features_num, features_cat])
+
+    else:  # Si el objeto es directamente un modelo (no pipeline)
+        model_final = modelo
+        importances = model_final.feature_importances_
+
+        # Si no hay nombres de variables, generar nombres genéricos
+        n_features = len(importances)
+        if num is not None or cat is not None:
+            features = np.array((num or []) + (cat or []))
+        else:
+            features = np.array([f"Feature {i}" for i in range(n_features)])
+
+    # --- 3. Crear DataFrame de importancias ---
+    df_imp = pd.DataFrame({
+        'Feature': features,
+        'Importance': importances
+    }).sort_values(by='Importance', ascending=False)
+
+    # --- 4. Graficar ---
+    fig = px.bar(
+        df_imp.head(15),
+        x='Importance',
+        y='Feature',
+        orientation='h',
+        title="Top 15 Importancias de Variables"
+    )
     fig.update_layout(yaxis=dict(autorange="reversed"))
+
     return fig
