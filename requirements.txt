@@ -1,0 +1,12 @@
+dash
+dash-bootstrap-components
+plotly
+seaborn
+matplotlib
+scipy
+statsmodels
+scikit-learn==1.6.1
+imbalanced-learn==0.12.4
+pandas
+numpy
+joblib
