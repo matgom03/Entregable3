@@ -6,6 +6,8 @@ import plotly.express as px
 import joblib
 from utils import plot_confusion_matrix, plot_roc_curve, plot_feature_importance
 from sklearn.base import BaseEstimator, TransformerMixin
+import os
+import gdown
 class MultiHotDeckImputer(BaseEstimator, TransformerMixin):
     def __init__(self, imputations, random_state=0):
         self.imputations = imputations
@@ -33,8 +35,25 @@ df["Income"] = df["Income"].astype("category")
 cat=df.select_dtypes(include=['object','category']).columns.drop(['Income','Education-num'])
 num = df.select_dtypes(include=[np.number]).columns
 duplicadas = df[df.duplicated()]
-grid_search = joblib.load("modelo/gridsearch_rf.joblib")
+# ID del archivo en Google Drive (reemplázalo con el tuyo)
+drive_file_id = "1Kzh2hZoLC7B9fCrpyzpChYkbLsngFWuw"  # <-- cambia esto
+
+# Ruta local donde se guardará
+modelo_path = "modelo/gridsearch_rf.joblib"
+
+# Si el modelo no existe localmente, se descarga
+if not os.path.exists(modelo_path):
+    print("Descargando modelo desde Google Drive...")
+    url = f"https://drive.google.com/uc?id={drive_file_id}"
+    os.makedirs(os.path.dirname(modelo_path), exist_ok=True)
+    gdown.download(url, modelo_path, quiet=False)
+else:
+    print("Modelo ya disponible localmente.")
+
+# Cargar el modelo
+grid_search = joblib.load(modelo_path)
 best_model = grid_search.best_estimator_
+
 resultados = np.load("modelo/results_rf.npz")
 cm = resultados["cm"]
 fpr, tpr, roc_auc = resultados["fpr"], resultados["tpr"], resultados["roc_auc"]
