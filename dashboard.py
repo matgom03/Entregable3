@@ -650,7 +650,7 @@ tab_conclusiones = dbc.Tab(
                     - El modelo realizado tiene una ROC AUC de 0.91 lo que nos muestra que realiza una buena discriminacion entre ambas clases 
                     - El modelo en general reconoce la mayoria de los casos de ambas clases con pocos falsos negativos en la matriz de confusion 
                     - Las metricas generales del modelo rondan alrededor de 0.7 en la clase de ganancias mayores a 50k y 0.8 para la clase de ganancias 0 
-                    - Las variables mas importantes para el modelo son Las variables más importantes son edad, estado civil, horas trabajadas y capital-gain, todas intuitivamente relacionadas con ingresos.
+                    - Las variables mas importantes para el modelo son edad, estado civil, horas trabajadas y capital-gain, todas intuitivamente relacionadas con ingresos.
                     - Limitaciones del modelo: el modelo al ser randomforest es bastante tardado en la ejecucion sobre todo en la busqueda de hiperparametros realizada al ser un dataset de tamaño mediano, ademas de que tiene cierto desbalance el dataset lo cual puede complicar los resultados si no se usa tecnicas de balanceo como SMOTE o ADASYN. 
                     También existen correlaciones entre variables que pueden distorsionar la interpretación de la importancia de las características, por lo que se deben tomar en cuenta estos aspectos si se quieren realizar analisis futuros.
                     """
