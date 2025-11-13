@@ -3,6 +3,8 @@ from dash import dcc, html,dash_table,Input,Output,State,no_update
 import dash_bootstrap_components as dbc
 from utils import *
 import plotly.express as px
+import os
+import gdown
 import joblib
 from utils import plot_confusion_matrix, plot_roc_curve, plot_feature_importance
 from sklearn.base import BaseEstimator, TransformerMixin
@@ -33,7 +35,12 @@ df["Income"] = df["Income"].astype("category")
 cat=df.select_dtypes(include=['object','category']).columns.drop(['Income','Education-num'])
 num = df.select_dtypes(include=[np.number]).columns
 duplicadas = df[df.duplicated()]
-best_model = joblib.load("modelo/gridsearch_rf.joblib")
+url = "https://drive.google.com/uc?id=1o5TPavr7g-QysNxxey9AJEA3OY95kzM2"
+output_path = "modelo/gridsearch_rf.joblib"
+if not os.path.exists(output_path):
+    print("Descargando modelo desde Google Drive...")
+    gdown.download(url, output_path, quiet=False)
+best_model = joblib.load(output_path)
 resultados = np.load("modelo/results_rf.npz")
 cm = resultados["cm"]
 fpr, tpr, roc_auc = resultados["fpr"], resultados["tpr"], resultados["roc_auc"]
