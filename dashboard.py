@@ -35,31 +35,12 @@ df["Income"] = df["Income"].astype("category")
 cat=df.select_dtypes(include=['object','category']).columns.drop(['Income','Education-num'])
 num = df.select_dtypes(include=[np.number]).columns
 duplicadas = df[df.duplicated()]
-best_model = None
-url = "https://drive.google.com/uc?id=1o5TPavr7g-QysNxxey9AJEA3OY95kzM2"
-output_path = "modelo/gridsearch_rf.joblib"
+df_importancias = pd.read_csv("feature_importances.csv")
 resultados = np.load("modelo/results_rf.npz")
 cm = resultados["cm"]
 fpr, tpr, roc_auc = resultados["fpr"], resultados["tpr"], resultados["roc_auc"]
 cm_fig = plot_confusion_matrix(cm)
 roc_fig = plot_roc_curve(fpr, tpr, roc_auc)
-def load_model_lazy():
-    """Carga el modelo solo cuando se necesite"""
-    global best_model
-
-    if best_model is not None:
-        # Ya está cargado en memoria
-        return best_model
-
-    # Descarga solo si no existe localmente
-    if not os.path.exists(output_path):
-        print("Descargando modelo desde Google Drive...")
-        gdown.download(url, output_path, quiet=False)
-
-    # Carga el modelo y resultados
-    print("Cargando modelo Random Forest...")
-    best_model = joblib.load(output_path)
-    return best_model
 app = dash.Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP],suppress_callback_exceptions=True)
 app.title = "EDA Adult Dataset"
 server = app.server
@@ -217,13 +198,11 @@ def render_subtab(subtab_value):
     # Subtab: Visualizaciones del Modelo
     # ================================
     elif subtab_value == 'modelo':
-        model= load_model_lazy()
-        fi_fig = plot_feature_importance(model, cat, num)
-
         return html.Div([
             html.H3("Visualizaciones del Modelo - Random Forest"),
             html.Hr(),
 
+            # 🔹 Fila 1: Matriz de Confusión y Curva ROC
             html.Div([
                 html.Div([
                     html.H5("Matriz de Confusión"),
@@ -236,11 +215,27 @@ def render_subtab(subtab_value):
                 ], style={"width": "48%", "padding": "10px"})
             ], style={"display": "flex", "justifyContent": "space-between", "flexWrap": "wrap"}),
 
+            html.Hr(),
+
+            # 🔹 Fila 2: Importancia de Características
             html.Div([
-                html.H5("Importancia de Variables"),
-                dcc.Graph(figure=fi_fig, style={"height": "500px"})
-            ])
+                html.H5("Top 20 Feature Importances - Random Forest"),
+                dcc.Graph(
+                    figure=px.bar(
+                        pd.read_csv("feature_importances.csv").head(20),
+                        x="Importance",
+                        y="Feature",
+                        orientation="h",
+                        title="Top 20 Feature Importances - Random Forest"
+                    ).update_layout(
+                        yaxis={'categoryorder': 'total ascending'},
+                        height=500,
+                        margin=dict(l=80, r=20, t=60, b=40)
+                    )
+                )
+            ], style={"width": "100%", "padding": "10px"})
         ])
+
     # ================================
     # Subtab: Indicadores del Modelo
     # ================================
