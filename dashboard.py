@@ -35,17 +35,31 @@ df["Income"] = df["Income"].astype("category")
 cat=df.select_dtypes(include=['object','category']).columns.drop(['Income','Education-num'])
 num = df.select_dtypes(include=[np.number]).columns
 duplicadas = df[df.duplicated()]
+best_model = None
 url = "https://drive.google.com/uc?id=1o5TPavr7g-QysNxxey9AJEA3OY95kzM2"
 output_path = "modelo/gridsearch_rf.joblib"
-if not os.path.exists(output_path):
-    print("Descargando modelo desde Google Drive...")
-    gdown.download(url, output_path, quiet=False)
-best_model = joblib.load(output_path)
 resultados = np.load("modelo/results_rf.npz")
 cm = resultados["cm"]
 fpr, tpr, roc_auc = resultados["fpr"], resultados["tpr"], resultados["roc_auc"]
 cm_fig = plot_confusion_matrix(cm)
 roc_fig = plot_roc_curve(fpr, tpr, roc_auc)
+def load_model_lazy():
+    """Carga el modelo solo cuando se necesite"""
+    global best_model
+
+    if best_model is not None:
+        # Ya está cargado en memoria
+        return best_model
+
+    # Descarga solo si no existe localmente
+    if not os.path.exists(output_path):
+        print("Descargando modelo desde Google Drive...")
+        gdown.download(url, output_path, quiet=False)
+
+    # Carga el modelo y resultados
+    print("Cargando modelo Random Forest...")
+    best_model = joblib.load(output_path)
+    return best_model
 app = dash.Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP],suppress_callback_exceptions=True)
 app.title = "EDA Adult Dataset"
 server = app.server
@@ -203,36 +217,30 @@ def render_subtab(subtab_value):
     # Subtab: Visualizaciones del Modelo
     # ================================
     elif subtab_value == 'modelo':
-        fi_fig = plot_feature_importance(best_model, cat, num)
+        model, cm_fig_local, roc_fig_local = load_model_lazy()
+        fi_fig = plot_feature_importance(model, cat, num)
 
         return html.Div([
             html.H3("Visualizaciones del Modelo - Random Forest"),
             html.Hr(),
 
-        # Fila superior
             html.Div([
                 html.Div([
                     html.H5("Matriz de Confusión"),
-                    dcc.Graph(figure=cm_fig, style={"height": "400px"})
+                    dcc.Graph(figure=cm_fig_local, style={"height": "400px"})
                 ], style={"width": "48%", "padding": "10px"}),
 
                 html.Div([
                     html.H5("Curva ROC"),
-                    dcc.Graph(figure=roc_fig, style={"height": "400px"})
+                    dcc.Graph(figure=roc_fig_local, style={"height": "400px"})
                 ], style={"width": "48%", "padding": "10px"})
-            ], style={
-                "display": "flex",
-                "justifyContent": "space-between",
-                "flexWrap": "wrap"
-            }),
+            ], style={"display": "flex", "justifyContent": "space-between", "flexWrap": "wrap"}),
 
-            # Fila inferior
             html.Div([
                 html.H5("Importancia de Variables"),
                 dcc.Graph(figure=fi_fig, style={"height": "500px"})
-            ], style={"width": "100%", "padding": "10px"})
+            ])
         ])
-    
     # ================================
     # Subtab: Indicadores del Modelo
     # ================================
