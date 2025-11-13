@@ -217,7 +217,7 @@ def render_subtab(subtab_value):
     # Subtab: Visualizaciones del Modelo
     # ================================
     elif subtab_value == 'modelo':
-        model, cm_fig_local, roc_fig_local = load_model_lazy()
+        model= load_model_lazy()
         fi_fig = plot_feature_importance(model, cat, num)
 
         return html.Div([
@@ -227,12 +227,12 @@ def render_subtab(subtab_value):
             html.Div([
                 html.Div([
                     html.H5("Matriz de Confusión"),
-                    dcc.Graph(figure=cm_fig_local, style={"height": "400px"})
+                    dcc.Graph(figure=cm_fig, style={"height": "400px"})
                 ], style={"width": "48%", "padding": "10px"}),
 
                 html.Div([
                     html.H5("Curva ROC"),
-                    dcc.Graph(figure=roc_fig_local, style={"height": "400px"})
+                    dcc.Graph(figure=roc_fig, style={"height": "400px"})
                 ], style={"width": "48%", "padding": "10px"})
             ], style={"display": "flex", "justifyContent": "space-between", "flexWrap": "wrap"}),
 
